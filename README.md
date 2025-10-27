@@ -9,7 +9,7 @@ Measured images are supposed to look like this
 - Create a grid MRC image for visual inspection
 - Apply three types of scan distortions:
   1. Anisotropy in x/y
-  2. Logarithmic distortion in the left quarter
+  2. Logarithmic scan distortion: scan lines start higher on the left and smoothly meet the straight scan line at the first quadrant boundary (simulates scan coil charging/hysteresis)
   3. Progressive y-direction scaling (inflation towards right)
 - Batch processing of multiple MRC files
 - Automatic descriptive output filenames
@@ -57,6 +57,20 @@ python stem_distortion.py --input_dir . \
 ```bash
 python stem_distortion.py --input_dir . \
     --log_amplitude 5 --log_decay 0.3
+```
+
+### Logarithmic Scan Distortion Details
+
+This distortion simulates the effect of scan coil charging/hysteresis:
+- For each scan line, the leftmost columns start higher (in y), and the offset decays smoothly to zero at the boundary of the first quadrant.
+- The scan line meets the straight scan line exactly at the boundary, ensuring no visible jump.
+- Parameters:
+  - `--log_amplitude`: Maximum vertical offset at the left edge (pixels)
+  - `--log_decay`: Controls how quickly the offset decays (smaller = slower decay)
+
+Example:
+```bash
+python stem_distortion.py --input_dir . --log_amplitude 20 --log_decay 0.001
 ```
 
 #### Progressive y-scaling only

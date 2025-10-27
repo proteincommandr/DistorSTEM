@@ -65,25 +65,19 @@ def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=N
     height, width = image.shape
     if quarter_width is None:
         quarter_width = width // 4
-    
     # Create coordinate grid
     y, x = np.mgrid[0:height, 0:width]
-    center_y = height // 2
-    
-    # Create displacement field for left quarter
-    x_coord = np.linspace(0, 1, quarter_width)
-    # The decay parameter now controls how quickly the effect equilibrates; lower values = slower decay
-    # The sign of amplitude controls direction (positive: downward, negative: upward)
-    displacement = amplitude * (1 - np.exp(-decay * x_coord)) / (1 - np.exp(-decay))
-    # Normalize so that displacement goes from 0 to amplitude across the left quarter
-    y_offset = np.zeros_like(image)
-    y_offset[:, :quarter_width] = np.tile(displacement, (height, 1))
-    # Apply displacement relative to the center line
-    y_shifted = y - center_y
-    y_offset = y_offset * (y_shifted / center_y)
-    # Create transformed coordinates
-    coords = np.array([y + y_offset, x])
-    # Apply transformation
+    y_new = y.copy()
+    # Create normalized offset profile: offset goes from amplitude at col=0 to 0 at col=quarter_width
+    col_indices = np.arange(quarter_width)
+    # Use a decaying function, then normalize so offset[0]=amplitude, offset[quarter_width-1]=0
+    raw_profile = np.exp(-decay * col_indices)
+    # Normalize: offset = amplitude * (raw_profile - raw_profile[-1]) / (raw_profile[0] - raw_profile[-1])
+    offset_profile = amplitude * (raw_profile - raw_profile[-1]) / (raw_profile[0] - raw_profile[-1])
+    for col in range(quarter_width):
+        y_new[:, col] = y[:, col] - offset_profile[col]
+    # For the rest of the image, no offset
+    coords = np.array([y_new, x])
     return ndimage.map_coordinates(image, coords, order=1)
 
 def apply_y_scaling(image, scale_factor=2.0):
@@ -118,7 +112,7 @@ def generate_output_filename(input_path, args):
     
     if args.x_scale != 1.0 or args.y_scale != 1.0:
         suffix.append(f"aniso_x{args.x_scale:.2f}_y{args.y_scale:.2f}")
-    if args.log_amplitude > 0:
+    if args.log_amplitude != 0:
         suffix.append(f"log_a{args.log_amplitude:.1f}_d{args.log_decay:.1f}")
     if args.y_scale_factor != 0:
         suffix.append(f"yscale_{args.y_scale_factor:.4f}")
