@@ -25,26 +25,42 @@ def create_grid_image(size=4096, spacing=50):
 
 def apply_anisotropy(image, x_scale=1.0, y_scale=1.0):
     """
-    Apply anisotropic scaling to the image.
+    Apply anisotropic scaling to the image while maintaining original dimensions.
+    The content is warped but the output size remains the same.
     Args:
         image: Input image as numpy array
         x_scale: Scaling factor in x direction
         y_scale: Scaling factor in y direction
     Returns:
-        Distorted image
+        Distorted image with same dimensions as input
     """
-    return ndimage.zoom(image, (y_scale, x_scale), order=1)
+    height, width = image.shape
+    y, x = np.mgrid[0:height, 0:width]
+    
+    # Create coordinate mapping that scales from the center
+    center_y, center_x = height // 2, width // 2
+    
+    # Scale coordinates around the center
+    x = center_x + (x - center_x) / x_scale
+    y = center_y + (y - center_y) / y_scale
+    
+    # Map the coordinates
+    coords = np.array([y, x])
+    
+    # Apply the transformation while maintaining original dimensions
+    return ndimage.map_coordinates(image, coords, order=1)
 
 def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=None):
     """
     Apply logarithmic distortion to the left quarter of the image.
+    The distortion is centered vertically around the middle of the image.
     Args:
         image: Input image as numpy array
         amplitude: Maximum displacement in pixels
         decay: Rate of decay for the logarithmic function
         quarter_width: Width of affected region (default: image_width/4)
     Returns:
-        Distorted image
+        Distorted image with same dimensions as input
     """
     height, width = image.shape
     if quarter_width is None:
@@ -52,14 +68,18 @@ def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=N
     
     # Create coordinate grid
     y, x = np.mgrid[0:height, 0:width]
+    center_y = height // 2
     
     # Create displacement field for left quarter
     x_coord = np.arange(quarter_width)
     displacement = amplitude * np.exp(-decay * x_coord)
     
-    # Apply displacement only to left quarter
+    # Apply displacement relative to the center line
     y_offset = np.zeros_like(image)
+    y_shifted = y - center_y
     y_offset[:, :quarter_width] = np.tile(displacement, (height, 1))
+    # Scale displacement based on distance from center
+    y_offset = y_offset * (y_shifted / center_y)
     
     # Create transformed coordinates
     coords = np.array([y + y_offset, x])
