@@ -107,6 +107,8 @@ def apply_y_scaling(image, scale_factor=2.0):
     # Apply scaling relative to center line
     y_shifted = y - center
     y_scaled = y_shifted * scale + center
+    coords = np.array([y_scaled, x])
+    return ndimage.map_coordinates(image, coords, order=1)
 
 def generate_output_filename(input_path, args):
     """
@@ -119,7 +121,7 @@ def generate_output_filename(input_path, args):
         suffix.append(f"aniso_x{args.x_scale:.2f}_y{args.y_scale:.2f}")
     if args.log_amplitude > 0:
         suffix.append(f"log_a{args.log_amplitude:.1f}_d{args.log_decay:.1f}")
-    if args.y_scale_factor > 0:
+    if args.y_scale_factor != 0:
         suffix.append(f"yscale_{args.y_scale_factor:.4f}")
     
     if not suffix:
@@ -135,15 +137,19 @@ def process_mrc_file(input_path, args):
     
     with mrcfile.open(input_path) as mrc:
         image = mrc.data.copy()
-    
+    if image.ndim != 2:
+        print(f"Warning: {input_path} is not a 2D image. Skipping.")
+        return
     # Apply selected distortions only
     if args.x_scale != 1.0 or args.y_scale != 1.0:
         image = apply_anisotropy(image, args.x_scale, args.y_scale)
     if args.log_amplitude > 0:
         image = apply_logarithmic_distortion(image, args.log_amplitude, args.log_decay)
-    if args.y_scale_factor > 0:
+    if args.y_scale_factor != 0:
         image = apply_y_scaling(image, args.y_scale_factor)
-    
+    if image is None:
+        print(f"Warning: Distortion function returned None for {input_path}. Skipping.")
+        return
     with mrcfile.new(output_path, overwrite=True) as mrc:
         mrc.set_data(image.astype(np.float32))
 
