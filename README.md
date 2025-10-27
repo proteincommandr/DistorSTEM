@@ -3,6 +3,7 @@
 This project provides tools to simulate and correct scan distortions in micrographs obtained via scanning transmission electron microscopy (STEM).
 Measured images are supposed to look like this
 
+<img width="1600" height="1600" alt="grafik" src="https://github.com/user-attachments/assets/98036707-7315-4a57-846e-e90f22027a86" />
 
 ## Features
 - Create a grid MRC image for visual inspection
