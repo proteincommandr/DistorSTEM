@@ -71,19 +71,18 @@ def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=N
     center_y = height // 2
     
     # Create displacement field for left quarter
-    x_coord = np.arange(quarter_width)
-    displacement = amplitude * np.exp(-decay * x_coord)
-    
-    # Apply displacement relative to the center line
+    x_coord = np.linspace(0, 1, quarter_width)
+    # The decay parameter now controls how quickly the effect equilibrates; lower values = slower decay
+    # The sign of amplitude controls direction (positive: downward, negative: upward)
+    displacement = amplitude * (1 - np.exp(-decay * x_coord)) / (1 - np.exp(-decay))
+    # Normalize so that displacement goes from 0 to amplitude across the left quarter
     y_offset = np.zeros_like(image)
-    y_shifted = y - center_y
     y_offset[:, :quarter_width] = np.tile(displacement, (height, 1))
-    # Scale displacement based on distance from center
+    # Apply displacement relative to the center line
+    y_shifted = y - center_y
     y_offset = y_offset * (y_shifted / center_y)
-    
     # Create transformed coordinates
     coords = np.array([y + y_offset, x])
-    
     # Apply transformation
     return ndimage.map_coordinates(image, coords, order=1)
 
