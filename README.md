@@ -11,6 +11,8 @@ Measured images are supposed to look like this
   1. Anisotropy in x/y
   2. Logarithmic distortion in the left quarter
   3. Progressive y-direction scaling (inflation towards right)
+- Batch processing of multiple MRC files
+- Automatic descriptive output filenames
 - Read and write MRC files
 
 ## Requirements
@@ -21,35 +23,55 @@ pip install -r requirements.txt
 
 ## Usage
 ### Create a grid image
-```
+```bash
 python stem_distortion.py --output_grid test_grid.mrc
 ```
 
-### Apply distortions
-#### Anisotropy only
+### Process a directory of MRC files
+The script can process all MRC files in a directory, automatically generating output filenames that include the distortion parameters:
+
+```bash
+python stem_distortion.py --input_dir ./your_directory \
+    --x_scale 1.02 \
+    --y_scale 1.0 \
+    --log_amplitude 5 \
+    --log_decay 0.3 \
+    --y_scale_factor 0.0005
 ```
-python stem_distortion.py --input_mrc test_grid.mrc --output_mrc anisotropic.mrc --x_scale 1.0 --y_scale 1.02 --log_amplitude 0 --y_scale_factor 0
+
+Output files will be created in the same directory with descriptive suffixes, for example:
+- `input_aniso_x1.02_y1.00.mrc` (for anisotropic scaling)
+- `input_log_a5.0_d0.3.mrc` (for logarithmic distortion)
+- `input_yscale_0.0005.mrc` (for y-scaling)
+- `input_aniso_x1.02_y1.00_log_a5.0_d0.3_yscale_0.0005.mrc` (for combined distortions)
+
+### Example Distortion Combinations
+
+#### Anisotropy only
+```bash
+python stem_distortion.py --input_dir . \
+    --x_scale 1.0 --y_scale 1.02
 ```
 
 #### Logarithmic distortion only
-```
-python stem_distortion.py --input_mrc test_grid.mrc --output_mrc logarithmic.mrc --x_scale 1.0 --y_scale 1.0 --log_amplitude 5 --log_decay 0.3 --y_scale_factor 0
+```bash
+python stem_distortion.py --input_dir . \
+    --log_amplitude 5 --log_decay 0.3
 ```
 
 #### Progressive y-scaling only
-```
-python stem_distortion.py --input_mrc test_grid.mrc --output_mrc y_scaling.mrc --x_scale 1.0 --y_scale 1.0 --log_amplitude 0 --y_scale_factor 0.0005
-```
-
-#### Combine distortions
-```
-python stem_distortion.py --input_mrc test_grid.mrc --output_mrc combined.mrc --x_scale 1.0 --y_scale 1.02 --log_amplitude 5 --log_decay 0.3 --y_scale_factor 0.0005
+```bash
+python stem_distortion.py --input_dir . \
+    --y_scale_factor 0.0005
 ```
 
 ## Parameters
-- `--x_scale`, `--y_scale`: Anisotropic scaling factors
-- `--log_amplitude`, `--log_decay`: Logarithmic distortion parameters
-- `--y_scale_factor`: Progressive y-scaling factor
+- `--input_dir`: Directory containing MRC files to process
+- `--output_grid`: Output path for generating a test grid
+- `--x_scale`, `--y_scale`: Anisotropic scaling factors (default: 1.0)
+- `--log_amplitude`: Amplitude of logarithmic distortion (default: 0)
+- `--log_decay`: Decay rate of logarithmic distortion (default: 0.5)
+- `--y_scale_factor`: Progressive y-scaling factor (default: 0)
 
 ## Output
-All images are saved in MRC format for easy inspection.
+All images are saved in MRC format with descriptive filenames indicating the applied distortions and their parameters. Original files are preserved, and new files are created with appropriate suffixes.

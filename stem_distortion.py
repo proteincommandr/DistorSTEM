@@ -2,6 +2,7 @@
 import numpy as np
 import mrcfile
 import argparse
+import os
 from scipy import ndimage
 
 def create_grid_image(size=4096, spacing=50):
@@ -88,16 +89,54 @@ def apply_y_scaling(image, scale_factor=0.001):
     coords = np.array([y_scaled, x])
     return ndimage.map_coordinates(image, coords, order=1)
 
+def generate_output_filename(input_path, args):
+    """
+    Generate output filename with descriptive suffix based on applied distortions.
+    """
+    base = os.path.splitext(input_path)[0]
+    suffix = []
+    
+    if args.x_scale != 1.0 or args.y_scale != 1.0:
+        suffix.append(f"aniso_x{args.x_scale:.2f}_y{args.y_scale:.2f}")
+    if args.log_amplitude > 0:
+        suffix.append(f"log_a{args.log_amplitude:.1f}_d{args.log_decay:.1f}")
+    if args.y_scale_factor > 0:
+        suffix.append(f"yscale_{args.y_scale_factor:.4f}")
+    
+    if not suffix:
+        return f"{base}_nodistort.mrc"
+    return f"{base}_{'_'.join(suffix)}.mrc"
+
+def process_mrc_file(input_path, args):
+    """
+    Process a single MRC file with the specified distortions.
+    """
+    output_path = generate_output_filename(input_path, args)
+    print(f"Processing {input_path} -> {os.path.basename(output_path)}")
+    
+    with mrcfile.open(input_path) as mrc:
+        image = mrc.data.copy()
+    
+    # Apply selected distortions only
+    if args.x_scale != 1.0 or args.y_scale != 1.0:
+        image = apply_anisotropy(image, args.x_scale, args.y_scale)
+    if args.log_amplitude > 0:
+        image = apply_logarithmic_distortion(image, args.log_amplitude, args.log_decay)
+    if args.y_scale_factor > 0:
+        image = apply_y_scaling(image, args.y_scale_factor)
+    
+    with mrcfile.new(output_path, overwrite=True) as mrc:
+        mrc.set_data(image.astype(np.float32))
+
 def main():
     parser = argparse.ArgumentParser(description='Create and manipulate STEM distortion patterns')
     parser.add_argument('--output_grid', type=str, help='Output path for grid image')
-    parser.add_argument('--input_mrc', type=str, help='Input MRC file to distort')
-    parser.add_argument('--output_mrc', type=str, help='Output path for distorted MRC')
+    parser.add_argument('--input_dir', type=str, help='Input directory containing MRC files to process')
     parser.add_argument('--x_scale', type=float, default=1.0, help='X direction scaling factor')
     parser.add_argument('--y_scale', type=float, default=1.0, help='Y direction scaling factor')
-    parser.add_argument('--log_amplitude', type=float, default=10, help='Amplitude of logarithmic distortion')
+    parser.add_argument('--log_amplitude', type=float, default=0, help='Amplitude of logarithmic distortion')
     parser.add_argument('--log_decay', type=float, default=0.5, help='Decay rate of logarithmic distortion')
-    parser.add_argument('--y_scale_factor', type=float, default=0.001, help='Progressive Y scaling factor')
+    parser.add_argument('--y_scale_factor', type=float, default=0, help='Progressive Y scaling factor')
     
     args = parser.parse_args()
     
@@ -107,21 +146,21 @@ def main():
         with mrcfile.new(args.output_grid, overwrite=True) as mrc:
             mrc.set_data(grid)
     
-    # Process input MRC if provided
-    if args.input_mrc and args.output_mrc:
-        with mrcfile.open(args.input_mrc) as mrc:
-            image = mrc.data.copy()
+    # Process input directory if provided
+    if args.input_dir:
+        if not os.path.isdir(args.input_dir):
+            print(f"Error: {args.input_dir} is not a directory")
+            return
         
-            # Apply selected distortions only
-            if args.x_scale != 1.0 or args.y_scale != 1.0:
-                image = apply_anisotropy(image, args.x_scale, args.y_scale)
-            if args.log_amplitude > 0:
-                image = apply_logarithmic_distortion(image, args.log_amplitude, args.log_decay)
-            if args.y_scale_factor > 0:
-                image = apply_y_scaling(image, args.y_scale_factor)
+        mrc_files = [f for f in os.listdir(args.input_dir) if f.endswith('.mrc')]
+        if not mrc_files:
+            print(f"No MRC files found in {args.input_dir}")
+            return
         
-        with mrcfile.new(args.output_mrc, overwrite=True) as mrc:
-            mrc.set_data(image.astype(np.float32))
+        print(f"Found {len(mrc_files)} MRC files to process")
+        for mrc_file in mrc_files:
+            input_path = os.path.join(args.input_dir, mrc_file)
+            process_mrc_file(input_path, args)
 
 if __name__ == '__main__':
     main()
