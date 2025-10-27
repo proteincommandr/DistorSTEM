@@ -87,27 +87,26 @@ def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=N
     # Apply transformation
     return ndimage.map_coordinates(image, coords, order=1)
 
-def apply_y_scaling(image, scale_factor=0.001):
+def apply_y_scaling(image, scale_factor=2.0):
     """
     Apply progressive y-direction scaling from left to right.
     Args:
         image: Input image as numpy array
-        scale_factor: Factor controlling the amount of scaling
+        scale_factor: Maximum distortion in pixels. The right edge of the image
+                     will be shifted by this amount relative to the center line.
+                     Positive values inflate the right side, negative values compress it.
     Returns:
-        Distorted image
+        Distorted image with same dimensions as input
     """
     height, width = image.shape
     y, x = np.mgrid[0:height, 0:width]
     center = height // 2
-    # Limit the maximum distortion to a couple of pixels (e.g., 2 pixels)
-    max_distortion = 2.0  # pixels
-    # Scaling factor goes from 1 at left to (1 + max_distortion/center) at right
-    scale = 1.0 + (max_distortion / center) * (x / (width - 1))
-    # Reverse effect: right side inflated, left side compressed
+    
+    # Create scaling that goes from 1 at left to (1 + scale_factor/center) at right
+    scale = 1.0 + (scale_factor / center) * (x / (width - 1))
+    # Apply scaling relative to center line
     y_shifted = y - center
     y_scaled = y_shifted * scale + center
-    coords = np.array([y_scaled, x])
-    return ndimage.map_coordinates(image, coords, order=1)
 
 def generate_output_filename(input_path, args):
     """
@@ -152,11 +151,11 @@ def main():
     parser = argparse.ArgumentParser(description='Create and manipulate STEM distortion patterns')
     parser.add_argument('--output_grid', type=str, help='Output path for grid image')
     parser.add_argument('--input_dir', type=str, help='Input directory containing MRC files to process')
-    parser.add_argument('--x_scale', type=float, default=1.0, help='X direction scaling factor')
-    parser.add_argument('--y_scale', type=float, default=1.0, help='Y direction scaling factor')
-    parser.add_argument('--log_amplitude', type=float, default=0, help='Amplitude of logarithmic distortion')
+    parser.add_argument('--x_scale', type=float, default=1.0, help='X direction scaling factor (unitless)')
+    parser.add_argument('--y_scale', type=float, default=1.0, help='Y direction scaling factor (unitless)')
+    parser.add_argument('--log_amplitude', type=float, default=0, help='Maximum displacement for logarithmic distortion (pixels)')
     parser.add_argument('--log_decay', type=float, default=0.5, help='Decay rate of logarithmic distortion')
-    parser.add_argument('--y_scale_factor', type=float, default=0, help='Progressive Y scaling factor')
+    parser.add_argument('--y_scale_factor', type=float, default=0, help='Progressive Y scaling in pixels (positive: inflate right side, negative: compress)')
     
     args = parser.parse_args()
     
