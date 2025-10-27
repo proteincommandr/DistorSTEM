@@ -36,14 +36,14 @@ python stem_distortion.py --input_dir ./your_directory \
     --y_scale 1.0 \
     --log_amplitude 5 \
     --log_decay 0.3 \
-    --y_scale_factor 0.0005
+    --y_scale_factor 2.0
 ```
 
 Output files will be created in the same directory with descriptive suffixes, for example:
 - `input_aniso_x1.02_y1.00.mrc` (for anisotropic scaling)
 - `input_log_a5.0_d0.3.mrc` (for logarithmic distortion)
-- `input_yscale_0.0005.mrc` (for y-scaling)
-- `input_aniso_x1.02_y1.00_log_a5.0_d0.3_yscale_0.0005.mrc` (for combined distortions)
+- `input_yscale_2.0000.mrc` (for y-scaling)
+- `input_aniso_x1.02_y1.00_log_a5.0_d0.3_yscale_2.0000.mrc` (for combined distortions)
 
 ### Example Distortion Combinations
 
@@ -62,16 +62,23 @@ python stem_distortion.py --input_dir . \
 #### Progressive y-scaling only
 ```bash
 python stem_distortion.py --input_dir . \
-    --y_scale_factor 0.0005
+    --y_scale_factor 2.0  # Right edge shifts 2 pixels outward
 ```
 
 ## Parameters
 - `--input_dir`: Directory containing MRC files to process
 - `--output_grid`: Output path for generating a test grid
-- `--x_scale`, `--y_scale`: Anisotropic scaling factors (default: 1.0)
-- `--log_amplitude`: Amplitude of logarithmic distortion (default: 0)
+- `--x_scale`, `--y_scale`: Anisotropic scaling factors (unitless, default: 1.0 = no scaling)
+  - Values > 1.0 stretch the image content
+  - Values < 1.0 compress the image content
+- `--log_amplitude`: Maximum pixel displacement for logarithmic distortion (in pixels, default: 0)
+  - Controls how far scan lines are shifted in the left quarter of the image
 - `--log_decay`: Decay rate of logarithmic distortion (default: 0.5)
-- `--y_scale_factor`: Progressive y-scaling factor (default: 0)
+  - Controls how quickly the distortion diminishes towards the center
+- `--y_scale_factor`: Progressive y-scaling magnitude (in pixels, default: 0)
+  - Positive values: inflate the right side (e.g., 2.0 = right edge shifts 2 pixels outward)
+  - Negative values: compress the right side (e.g., -2.0 = right edge shifts 2 pixels inward)
+  - Effect scales linearly from center to right edge
 
 ## Output
 All images are saved in MRC format with descriptive filenames indicating the applied distortions and their parameters. Original files are preserved, and new files are created with appropriate suffixes.
