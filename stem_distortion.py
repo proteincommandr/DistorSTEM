@@ -5,6 +5,7 @@ import argparse
 import os
 from scipy import ndimage
 from concurrent.futures import ProcessPoolExecutor
+import copy
 
 def create_grid_image(size=4096, spacing=50):
     """
@@ -147,6 +148,15 @@ def process_mrc_file(input_path, args):
     with mrcfile.new(output_path, overwrite=True) as mrc:
         mrc.set_data(image.astype(np.float32))
 
+def process_mrc_file_worker(args_tuple):
+    input_path, args_dict = args_tuple
+    class Args:
+        pass
+    args = Args()
+    for k, v in args_dict.items():
+        setattr(args, k, v)
+    return process_mrc_file(input_path, args)
+
 def main():
     parser = argparse.ArgumentParser(description='Create and manipulate STEM distortion patterns')
     parser.add_argument('--output_grid', type=str, help='Output path for grid image')
@@ -176,8 +186,9 @@ def main():
             return
         print(f"Found {len(mrc_files)} MRC files to process using {args.j} processes")
         input_paths = [os.path.join(args.input_dir, f) for f in mrc_files]
+        args_dict = vars(args)
         with ProcessPoolExecutor(max_workers=args.j) as executor:
-            executor.map(lambda path: process_mrc_file(path, args), input_paths)
+            list(executor.map(process_mrc_file_worker, [(p, copy.deepcopy(args_dict)) for p in input_paths]))
 
 if __name__ == '__main__':
     main()
