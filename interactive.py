@@ -80,9 +80,9 @@ def fourier_cc_loss_batched(M_flat, particle_images, align3d, volume, batch_size
     return loss_total
 
 # --- Load Inputs ---
-volume_file = "volume.mrc"
-align_file = "align3d.npy"
-particle_files = ["particle_0001.mrc","particle_0002.mrc"]  # extend to all particles
+volume_file = "volume.mrc" #placeholders
+align_file = "align3d.npy" #placeholders
+particle_files = ["particle_0001.mrc","particle_0002.mrc"]  # extend to all particles #placeholders
 
 with mrcfile.open(volume_file) as f:
     volume = torch.tensor(f.data.astype(np.float32), device=device)
