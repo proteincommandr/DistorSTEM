@@ -96,6 +96,9 @@ def print_analysis(results):
     print(f"Aspect ratio: {results['scale_factors'][0]/results['scale_factors'][1]:.6f}")
     
     print(f"\nReconstruction error: {results['reconstruction_error']:.2e}")
+    
+    print("\nDirect input for stem_distortion.py:")
+    print(f"--x_scale {results['scale_factors'][0]:.6f} --y_scale {results['scale_factors'][1]:.6f}")
 
 
 def main():
