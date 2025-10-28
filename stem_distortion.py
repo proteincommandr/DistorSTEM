@@ -7,6 +7,12 @@ from scipy import ndimage
 from concurrent.futures import ProcessPoolExecutor
 import copy
 
+INTERP_ORDERS = {
+    'nearest': 0,
+    'bilinear': 1,
+    'bicubic': 3
+}
+
 def create_grid_image(size=4096, spacing=50):
     """
     Create a grid image with horizontal and vertical lines.
@@ -25,7 +31,7 @@ def create_grid_image(size=4096, spacing=50):
     
     return image
 
-def apply_anisotropy(image, x_scale=1.0, y_scale=1.0):
+def apply_anisotropy(image, x_scale=1.0, y_scale=1.0, order=1):
     """
     Apply anisotropic scaling to the image while maintaining original dimensions.
     The content is warped but the output size remains the same.
@@ -50,9 +56,9 @@ def apply_anisotropy(image, x_scale=1.0, y_scale=1.0):
     coords = np.array([y, x])
     
     # Apply the transformation while maintaining original dimensions
-    return ndimage.map_coordinates(image, coords, order=1)
+    return ndimage.map_coordinates(image, coords, order=order)
 
-def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=None):
+def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=None, order=1):
     """
     Apply logarithmic distortion to the left quarter of the image.
     The distortion is centered vertically around the middle of the image.
@@ -80,9 +86,9 @@ def apply_logarithmic_distortion(image, amplitude=10, decay=0.5, quarter_width=N
         y_new[:, col] = y[:, col] - offset_profile[col]
     # For the rest of the image, no offset
     coords = np.array([y_new, x])
-    return ndimage.map_coordinates(image, coords, order=1)
+    return ndimage.map_coordinates(image, coords, order=order)
 
-def apply_y_scaling(image, scale_factor=2.0):
+def apply_y_scaling(image, scale_factor=2.0, order=1):
     """
     Apply progressive y-direction scaling from left to right.
     Args:
@@ -103,7 +109,7 @@ def apply_y_scaling(image, scale_factor=2.0):
     y_shifted = y - center
     y_scaled = y_shifted * scale + center
     coords = np.array([y_scaled, x])
-    return ndimage.map_coordinates(image, coords, order=1)
+    return ndimage.map_coordinates(image, coords, order=order)
 
 def generate_output_filename(input_path, args):
     """
@@ -135,13 +141,14 @@ def process_mrc_file(input_path, args):
     if image.ndim != 2:
         print(f"Warning: {input_path} is not a 2D image. Skipping.")
         return
+    interp_order = INTERP_ORDERS.get(getattr(args, 'interp', 'bilinear'), 1)
     # Apply selected distortions only
     if args.x_scale != 1.0 or args.y_scale != 1.0:
-        image = apply_anisotropy(image, args.x_scale, args.y_scale)
+        image = apply_anisotropy(image, args.x_scale, args.y_scale, order=interp_order)
     if args.log_amplitude > 0:
-        image = apply_logarithmic_distortion(image, args.log_amplitude, args.log_decay)
+        image = apply_logarithmic_distortion(image, args.log_amplitude, args.log_decay, order=interp_order)
     if args.y_scale_factor != 0:
-        image = apply_y_scaling(image, args.y_scale_factor)
+        image = apply_y_scaling(image, args.y_scale_factor, order=interp_order)
     if image is None:
         print(f"Warning: Distortion function returned None for {input_path}. Skipping.")
         return
@@ -167,6 +174,7 @@ def main():
     parser.add_argument('--log_decay', type=float, default=0.5, help='Decay rate of logarithmic distortion')
     parser.add_argument('--y_scale_factor', type=float, default=0, help='Progressive Y scaling in pixels (positive: inflate right side, negative: compress)')
     parser.add_argument('--j', type=int, default=8, help='Number of parallel processes (default: 8)')
+    parser.add_argument('--interp', type=str, default='bilinear', choices=['nearest', 'bilinear', 'bicubic'], help='Interpolation method for warping (default: bilinear)')
     args = parser.parse_args()
 
     # Create grid image
