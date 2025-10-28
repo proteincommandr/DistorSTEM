@@ -4,6 +4,7 @@ import mrcfile
 import argparse
 import os
 from scipy import ndimage
+from concurrent.futures import ProcessPoolExecutor
 
 def create_grid_image(size=4096, spacing=50):
     """
@@ -155,30 +156,28 @@ def main():
     parser.add_argument('--log_amplitude', type=float, default=0, help='Maximum displacement for logarithmic distortion (pixels)')
     parser.add_argument('--log_decay', type=float, default=0.5, help='Decay rate of logarithmic distortion')
     parser.add_argument('--y_scale_factor', type=float, default=0, help='Progressive Y scaling in pixels (positive: inflate right side, negative: compress)')
-    
+    parser.add_argument('--j', type=int, default=8, help='Number of parallel processes (default: 8)')
     args = parser.parse_args()
-    
+
     # Create grid image
     if args.output_grid:
         grid = create_grid_image()
         with mrcfile.new(args.output_grid, overwrite=True) as mrc:
             mrc.set_data(grid)
-    
+
     # Process input directory if provided
     if args.input_dir:
         if not os.path.isdir(args.input_dir):
             print(f"Error: {args.input_dir} is not a directory")
             return
-        
         mrc_files = [f for f in os.listdir(args.input_dir) if f.endswith('.mrc')]
         if not mrc_files:
             print(f"No MRC files found in {args.input_dir}")
             return
-        
-        print(f"Found {len(mrc_files)} MRC files to process")
-        for mrc_file in mrc_files:
-            input_path = os.path.join(args.input_dir, mrc_file)
-            process_mrc_file(input_path, args)
+        print(f"Found {len(mrc_files)} MRC files to process using {args.j} processes")
+        input_paths = [os.path.join(args.input_dir, f) for f in mrc_files]
+        with ProcessPoolExecutor(max_workers=args.j) as executor:
+            executor.map(lambda path: process_mrc_file(path, args), input_paths)
 
 if __name__ == '__main__':
     main()

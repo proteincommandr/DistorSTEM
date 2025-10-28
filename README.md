@@ -13,6 +13,7 @@ Measured images are supposed to look like this
   3. Progressive y-direction scaling (inflation towards right)
 - Batch processing of multiple MRC files
 - Automatic descriptive output filenames
+- Parallel processing with configurable number of threads
 - Read and write MRC files
 
 ## Requirements
@@ -36,7 +37,8 @@ python stem_distortion.py --input_dir ./your_directory \
     --y_scale 1.0 \
     --log_amplitude 5 \
     --log_decay 0.3 \
-    --y_scale_factor 2.0
+    --y_scale_factor 2.0 \
+    --j 8  # Use 8 parallel processes
 ```
 
 Output files will be created in the same directory with descriptive suffixes, for example:
@@ -93,6 +95,11 @@ python stem_distortion.py --input_dir . \
   - Positive values: inflate the right side (e.g., 2.0 = right edge shifts 2 pixels outward)
   - Negative values: compress the right side (e.g., -2.0 = right edge shifts 2 pixels inward)
   - Effect scales linearly from center to right edge
+- `--j`: Number of parallel processes to use (default: 8)
 
-## Output
-All images are saved in MRC format with descriptive filenames indicating the applied distortions and their parameters. Original files are preserved, and new files are created with appropriate suffixes.
+## Scripts
+### stem_distortion.py
+Main script for applying distortions to STEM images. Supports parallel processing for batch operations.
+
+### aniso_convert.py
+Utility script for converting CryoSPARC anisotropic magnification matrices. Helps analyze and understand the distortion parameters from CryoSPARC outputs.
